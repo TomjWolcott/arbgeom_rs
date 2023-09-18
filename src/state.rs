@@ -1,5 +1,6 @@
 use super::binding_structs::*;
-use winit::{window::Window, event::WindowEvent};
+use super::manifold::*;
+use winit::{window::Window};
 
 pub struct State {
     surface: wgpu::Surface,
@@ -7,20 +8,20 @@ pub struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
-    window: Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: Option<wgpu::BindGroup>,
-    pub info: Info,
     info_buffer: wgpu::Buffer,
-    geometry: Vec<Geometry>
+    manifold_buffer: wgpu::Buffer
 }
 
 impl State {
     // Creating some of the wgpu types requires async code
-    pub async fn new(window: Window, info: Info) -> Self {
+    pub async fn new(window: &Window, info: &Info, manifold: &impl Manifold) -> Self {
         let size = window.inner_size();
+
+        println!("{:?}", manifold);
 
         // The instance is a handle to our GPU
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
@@ -82,9 +83,15 @@ impl State {
 
         surface.configure(&device, &config);
 
+        println!("{}", manifold.insert_into_wgsl(
+            include_str!("shader.wgsl").into()
+        ).unwrap());
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(manifold.insert_into_wgsl(
+                include_str!("shader.wgsl").into()
+            ).unwrap().as_str().into()),
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -100,32 +107,29 @@ impl State {
                     },
                     count: None
                 },
-                // wgpu::BindGroupLayoutEntry {
-                //     binding: 1,
-                //     visibility: wgpu::ShaderStages::FRAGMENT,
-                //     ty: wgpu::BindingType::Buffer { 
-                //         ty: wgpu::BufferBindingType::Uniform, 
-                //         has_dynamic_offset: false, 
-                //         min_binding_size: None
-                //     },
-                //     count: None
-                // },
-                // wgpu::BindGroupLayoutEntry {
-                //     binding: 2,
-                //     visibility: wgpu::ShaderStages::FRAGMENT,
-                //     ty: wgpu::BindingType::Buffer { 
-                //         ty: wgpu::BufferBindingType::Uniform, 
-                //         has_dynamic_offset: false, 
-                //         min_binding_size: None
-                //     },
-                //     count: None
-                // }
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer { 
+                        ty: wgpu::BufferBindingType::Uniform, 
+                        has_dynamic_offset: false, 
+                        min_binding_size: None
+                    },
+                    count: None
+                },
             ]
         });
 
         let info_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("info buffer"),
             size: info.get_bytes().len() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false
+        });
+
+        let manifold_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("manifold buffer"),
+            size: 4 * 2 * manifold.get_bytes().len() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false
         });
@@ -162,7 +166,7 @@ impl State {
 
         let render_pipeline_layout = 
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
+                label: Some("Pipeline layout"),
                 bind_group_layouts: &[&bind_group_layout],
                 push_constant_ranges: &[],
             });
@@ -206,50 +210,38 @@ impl State {
         });
 
         Self { 
-            surface, device, queue, config, size, window, 
+            surface, device, queue, config, size,
             render_pipeline, vertex_buffer, bind_group_layout, bind_group: None,
-            info, info_buffer, geometry: Vec::new()
+            info_buffer, manifold_buffer
         }
-    }
-
-    pub fn window(&self) -> &Window {
-        &self.window
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
-            self.size = winit::dpi::PhysicalSize::new(new_size.width / 2, new_size.height / 2);
-            self.config.width = new_size.width/2;
-            self.config.height = new_size.height/2;
+            self.size = winit::dpi::PhysicalSize::new(new_size.width, new_size.height);
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
     }
 
-    pub fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
-    }
+    pub fn update_buffers(&mut self, info_option: Option<&Info>, manifold_option: Option<&impl Manifold>) {
+        if let Some(&(mut info)) = info_option {
+            info.set_sizes(self.size.width as f32, self.size.height as f32);
 
-    pub fn update(&mut self) {
-        self.info.set_sizes(self.size.width as f32, self.size.height as f32);
+            self.queue.write_buffer(&self.info_buffer, 0, &info.get_bytes()[..]);
+        }
 
-        self.queue.write_buffer(&self.info_buffer, 0, &self.info.get_bytes()[..]);
+        if let Some(manifold) = manifold_option {
+            self.manifold_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("manifold buffer"),
+                size: 4 * 2 * manifold.get_bytes().len() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false
+            });
 
-        // let geometry_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-        //     label: Some("info buffer"),
-        //     size: 4 * 2 * self.geometry.len() as u64,
-        //     usage: wgpu::BufferUsages::UNIFORM,
-        //     mapped_at_creation: true
-        // });
-
-        // self.queue.write_buffer(
-        //     &geometry_buffer, 
-        //     0, 
-        //     &self.geometry
-        //         .iter()
-        //         .map(|geometry| geometry.get_bytes())
-        //         .flatten()
-        //         .collect::<Vec<u8>>()[..]
-        // );
+            self.queue.write_buffer(&self.manifold_buffer, 0, &manifold.get_bytes()[..]);
+        }
 
         self.bind_group = Some(self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("bind group"),
@@ -263,14 +255,14 @@ impl State {
                         size: None
                     })
                 },
-                // wgpu::BindGroupEntry {
-                //     binding: 1,
-                //     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                //         buffer: &geometry_buffer,
-                //         offset: 0,
-                //         size: None
-                //     })
-                // }
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.manifold_buffer,
+                        offset: 0,
+                        size: None
+                    })
+                }
             ]
         }));
     }

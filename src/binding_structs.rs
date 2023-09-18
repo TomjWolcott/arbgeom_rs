@@ -1,8 +1,14 @@
-use nalgebra::{Vector4, Matrix4};
+use std::time::{Instant};
+use nalgebra::Vector4;
+use winit::event::VirtualKeyCode;
 
-#[derive(Debug)]
+use crate::manifold::{Point, Manifold};
+
+#[derive(Debug, Copy, Clone)]
 pub struct Info {
-    orientation: Matrix4<f32>,
+    x: Vector4<f32>,
+    y: Vector4<f32>,
+    z: Vector4<f32>,
     p: Vector4<f32>,
     focal_length: f32,
     px_size: f32,
@@ -10,71 +16,98 @@ pub struct Info {
     height: f32,
     delta: f32,
     max_iterations: f32,
-    pub time: f32
+    time: Instant
 }
 
 impl Info {
+    pub fn print_position(&self) {
+        println!("{}", self.p);
+    }
+
     pub fn set_sizes(&mut self, width: f32, height: f32) {
         self.width = width;
         self.height = height;
     }
 
-    pub fn get_bytes<'a>(&'a self) -> Vec<u8> {
+    pub fn get_bytes(&self) -> Vec<u8> {
         bytemuck::cast_slice(&[
-            self.orientation.remove_column(3).as_slice(),
+            self.x.as_slice(),
+            self.y.as_slice(),
+            self.z.as_slice(),
             self.p.as_slice(),
-            &[self.focal_length, self.px_size, self.width, self.height, self.delta, self.max_iterations, self.time],
+            &[
+                self.focal_length, self.px_size, self.width, self.height,
+                self.delta, self.max_iterations, self.time.elapsed().as_millis() as f32
+            ],
             &[0.0, 0.0, 0.0]
         ].concat()[..]).to_owned()
     }
 
-    pub fn rotate_between(&mut self, i0: usize, i1: usize, angle: f32) {
-        let mut rotation = Matrix4::zeros();
+    pub fn movement(&mut self, keycode: VirtualKeyCode, manifold: &impl Manifold) {
+        use VirtualKeyCode as VKC;
 
-        rotation[(i0, i0)] = angle.cos();
-        rotation[(i0, i1)] = angle.sin();
-        rotation[(i1, i0)] = -angle.sin();
-        rotation[(i1, i1)] = angle.cos();
+        let self_info: (&mut Vector4<f32>, &mut Vector4<f32>, f32) = match keycode {
+            VKC::D      => (&mut self.p, &mut self.x,  1.0),
+            VKC::A      => (&mut self.p, &mut self.x, -1.0),
+            VKC::Space  => (&mut self.p, &mut self.y,  1.0),
+            VKC::LShift => (&mut self.p, &mut self.y, -1.0),
+            VKC::W      => (&mut self.p, &mut self.z,  1.0),
+            VKC::S      => (&mut self.p, &mut self.z, -1.0),
+            _ => return
+        };
 
-        println!("rot1: {:?}", rotation);
+        let advanced_point = manifold.advance_point(Point {
+            pos: *self_info.0,
+            ray: self_info.2 * (*self_info.1)
+        }, 0.2);
 
-        for i in 0..4 {
-            if i != i0 && i != i1 {
-                rotation[(i, i)] = 1.0;
-            }
-        }
-        println!("rot2: {:?}", rotation);
-
-        self.orientation *= rotation;
+        *self_info.0 = advanced_point.pos;
+        *self_info.1 = self_info.2 * advanced_point.ray;
     }
 
     pub fn rotate_around_y(&mut self, xz_angle: f32, yz_angle: f32) {
-        println!("{:?}", self.orientation);
+        rotate_between(&mut self.x, &mut self.z, -xz_angle);
 
-        self.rotate_between(0, 2, xz_angle);
-        self.rotate_between(1, 2, yz_angle);
+        // let xy_angle = self.x.y.atan2(self.x.remove_row(1).magnitude());
+        // rotate_between(&mut self.x, &mut self.y, -xy_angle);
 
-        // self.p = -1.0 * self.orientation.column(2);
-
-        // let xy_angle = (self.orientation.m12).atan2(self.orientation.m22);
-        // self.rotate_between(0, 1, xy_angle);
-
-        println!("{:?}", self.orientation);
+        rotate_between(&mut self.y, &mut self.z, -yz_angle);
     }
+
+    pub fn reorient(&mut self) {
+        self.x = self.x.normalize();
+        self.y = self.y.normalize();
+        self.z = self.z.normalize();
+
+        self.y = self.y - self.x * self.x.dot(&self.y);
+        self.y = self.y.normalize();
+
+        self.z = self.z - self.x * self.x.dot(&self.z) - self.y * self.y.dot(&self.z);
+        self.z = self.z.normalize();
+    }
+}
+
+fn rotate_between(v1: &mut Vector4<f32>, v2: &mut Vector4<f32>, angle: f32) {
+    (*v1, *v2) = (
+        *v1 * angle.cos() + *v2 * angle.sin(),
+        -*v1 * angle.sin() + *v2 * angle.cos(),
+    );
 }
 
 impl Default for Info {
     fn default() -> Self {
         Self {
-            orientation: Matrix4::identity(),
-            p: -5.0f32 * Vector4::w() + Vector4::y(),
-            focal_length: 4.0,
+            x: Vector4::x(),
+            y: Vector4::y(),
+            z: Vector4::z(),
+            p: Vector4::zeros(),
+            focal_length: 0.5,
             px_size: 1.0,
             width: 0.0,
             height: 0.0,
-            delta: 0.01,
-            max_iterations: 10000.0,
-            time: 0.0
+            delta: 0.04,
+            max_iterations: 2000.0,
+            time: Instant::now()
         }
     }
 }

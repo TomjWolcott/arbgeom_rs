@@ -19,6 +19,8 @@ bytemuck = { version = "1.12", features = [ "derive" ] }
 nalgebra = "0.32.3"
 pollster = "0.3"
 cfg-if = "1"
+num = "0.4.1"
+game-loop = { version = "*", features = ["winit"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
