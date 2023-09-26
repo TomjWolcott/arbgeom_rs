@@ -1,5 +1,5 @@
-pub mod fourth_dim_shapes;
-mod third_dim_shapes;
+pub mod shapes4D;
+pub mod shapes3D;
 
 use nalgebra::Vector4;
 use winit::event::VirtualKeyCode;
@@ -13,7 +13,11 @@ pub struct Point {
 
 pub trait Manifold: std::fmt::Debug {
     fn description(&self) -> String {
-        String::from("None given")
+        String::from("Manifold")
+    }
+
+    fn starting_position(&self) -> (Vector4<f32>) {
+
     }
 
     fn project_onto_wgsl(&self) -> String;
@@ -31,7 +35,9 @@ pub trait Manifold: std::fmt::Debug {
         }
     }
 
-    fn is_on_curve(&self, pos: Vector4<f32>) -> bool;
+    fn is_on_curve(&self, pos: Vector4<f32>) -> bool {
+        panic!("{} does not currently impl is_on_curve", self.description())
+    }
 
     fn get_bytes(&self) -> Vec<u8>;
 
@@ -54,7 +60,7 @@ pub trait Manifold: std::fmt::Debug {
 
 #[cfg(test)]
 mod tests {
-    use crate::manifold::fourth_dim_shapes::*;
+    use crate::manifold::shapes4D::*;
     use super::*;
 
     #[test]

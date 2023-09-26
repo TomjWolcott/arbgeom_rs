@@ -14,7 +14,7 @@ use state::*;
 
 pub mod binding_structs;
 use binding_structs::*;
-use manifold::fourth_dim_shapes::*;
+use manifold::shapes4D::*;
 
 pub mod manifold;
 
@@ -33,6 +33,7 @@ const IDEAL_FPS: f32 = 20.0;
 use wasm_bindgen::prelude::*;
 
 use crate::manifold::*;
+use crate::manifold::shapes3D::{ExtrudedShape, Sphere, Torus};
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -81,7 +82,9 @@ pub async fn run() {
         // Hyperplane,
         // Hypersphere::new(10.0),
         // Hypersphube::new(10.0, 2.0),
-        Ditorus::new(10.0, 8.0, 3.0),
+        // Ditorus::new(10.0, 8.0, 3.0),
+        // ExtrudedShape(Sphere::new(10.0)),
+        ExtrudedShape(Torus::new(7.0, 5.0)),
         info,
         Vec::new()
     ).await;
@@ -93,7 +96,7 @@ pub async fn run() {
         20,
         0.1,
         |game_loop| {
-            game_loop.game.info.print_position();
+            // game_loop.game.info.print_position();
 
             if game_loop.number_of_updates() % 1 == 0 {
                 game_loop.game.info.reorient();
@@ -118,7 +121,7 @@ pub async fn run() {
                 Err(e) => eprintln!("{:?}", e),
             }
 
-            println!("FPS: {:.1}", 1.0 / game_loop.accumulated_time());
+            // println!("FPS: {:.1}", 1.0 / game_loop.accumulated_time());
         }, |game_loop| {
 
         }, |game_loop, event| match event {

@@ -105,7 +105,7 @@ impl Default for Info {
             px_size: 1.0,
             width: 0.0,
             height: 0.0,
-            delta: 0.04,
+            delta: 0.02,
             max_iterations: 2000.0,
             time: Instant::now()
         }

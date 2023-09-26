@@ -171,7 +171,7 @@ impl Manifold for Ditorus {
 
     fn project_onto_wgsl(&self) -> String {
         String::from("\
-            let pos2 = pos - manifold_info.v1;
+            let pos2 = pos - manifold_info.v1;\
       \n    var new_pos: vec4<f32> = vec4(0.0, 0.0, 0.0, 0.0);\
       \n    \
       \n    new_pos += manifold_info.r1 * normalize(vec4(pos2.x, 0.0, 0.0, pos2.w));\

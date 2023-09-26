@@ -81,7 +81,7 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
 //            break;
 //        }
 
-        if (abs(abs(point.pos.y)) < 0.1 && (pow(point.pos.x, 2.0) + pow(point.pos.z, 2.0) > pow(3.0, 2.0))) {
+        if (abs(abs(point.pos.y)) < 0.1 && (pow(point.pos.x, 2.0) + pow(point.pos.z, 2.0) > pow(3.0, 2.0)) /*&& (pos.x + pos.y + round(point.pos.z)) % 2.0 < 1.0*/) {
             if (point.pos.y < 0.0) {
                 add_color = vec4(0.3, 0.0, 0.0, 0.0);
             } else {
