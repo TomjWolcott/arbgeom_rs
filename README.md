@@ -5,4 +5,4 @@ A lot has changed in the arbgeom game since this, the geometry/manifold builder 
 
 ## Movement
 WASD, Space, Shift for movement and drag with the mouse to turn the camera.
-You can also add kebinds to some of the parameters of manifolds, for example the one that is currently set up uses t/g, y/h, u/j to control the varius radii of the ditorus
+You can also add kebinds to some of the parameters of manifolds, for example the one that is currently set up uses t/g, y/h, u/j to control the various radii of the ditorus
