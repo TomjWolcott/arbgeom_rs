@@ -204,6 +204,7 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     } else if (i == 0.0) {
         return vec4(1.0, 1.0, 1.0, 1.0);
     }
+
     let w = 20.0;
     let t: f32 = (
         round(0.5*cos(w * point.pos.x)+0.5) +

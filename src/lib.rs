@@ -7,7 +7,8 @@ use winit::{
 };
 
 use game_loop::game_loop;
-use winit::window::Window;
+use winit::dpi::PhysicalSize;
+use winit::window::{Fullscreen, Window};
 
 mod state;
 use state::*;
@@ -50,6 +51,7 @@ pub async fn run() {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
+        .with_fullscreen(Some(Fullscreen::Borderless(None)))
         // .with_inner_size(PhysicalSize { width: 1200.0, height: 2000.0 })
         .build(&event_loop)
         .unwrap();
@@ -82,9 +84,9 @@ pub async fn run() {
         // Hyperplane,
         // Hypersphere::new(10.0),
         // Hypersphube::new(10.0, 2.0),
-        // Ditorus::new(10.0, 8.0, 3.0),
+        Ditorus::new(10.0, 8.0, 3.0),
         // ExtrudedShape(Sphere::new(10.0)),
-        ExtrudedShape(Torus::new(7.0, 5.0)),
+        // ExtrudedShape(Torus::new(7.0, 5.0)),
         info,
         Vec::new()
     ).await;
@@ -93,7 +95,7 @@ pub async fn run() {
         event_loop,
         window,
         game,
-        20,
+        10,
         0.1,
         |game_loop| {
             // game_loop.game.info.print_position();

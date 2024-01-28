@@ -16,9 +16,9 @@ pub trait Manifold: std::fmt::Debug {
         String::from("Manifold")
     }
 
-    fn starting_position(&self) -> (Vector4<f32>) {
-
-    }
+    // fn starting_position(&self) -> (Vector4<f32>) {
+    //
+    // }
 
     fn project_onto_wgsl(&self) -> String;
 
