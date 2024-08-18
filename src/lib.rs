@@ -84,8 +84,8 @@ pub async fn run() {
         // Hyperplane,
         // Hypersphere::new(10.0),
         // Hypersphube::new(10.0, 2.0),
-        Ditorus::new(10.0, 8.0, 3.0),
-        // ExtrudedShape(Sphere::new(10.0)),
+        // Ditorus::new(10.0, 8.0, 3.0),
+        ExtrudedShape(Sphere::new(10.0)),
         // ExtrudedShape(Torus::new(7.0, 5.0)),
         info,
         Vec::new()
